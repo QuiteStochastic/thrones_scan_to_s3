@@ -9,8 +9,10 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.Scanner;
 
 /**
@@ -103,13 +105,17 @@ public class ScanToS3 {
         String secretKeyId;
 
         try {
-            Scanner inFile = new Scanner(new FileReader("./dev_user.txt"));
+
+
+            BufferedReader br = new BufferedReader(new FileReader("./dev_user.txt"));
+
+
 
             //skip the first line
-            inFile.next();
+            br.readLine();
 
-            String[] line=inFile.next().split(",");
-
+            String[] line=br.readLine().split(",");
+            System.out.println("line: "+line[0]);
             //in my current file format, the needed fields are the 2nd and 3rd entry in the csv file
             accessKeyId=line[1];
             secretKeyId=line[2];
@@ -119,6 +125,11 @@ public class ScanToS3 {
             e.printStackTrace();
             return true;
         }
+        catch (IOException e) {
+            e.printStackTrace();
+            return true;
+        }
+
 
         BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKeyId, secretKeyId);
         s3client = AmazonS3ClientBuilder.standard()

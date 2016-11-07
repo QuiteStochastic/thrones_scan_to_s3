@@ -9,6 +9,7 @@ RUN apt-get -y update && \
 RUN apt-get -y update && \
     apt-get -y install openjdk-8-jre
 
+ADD ./dev_user.txt /code
 ADD ./target/thrones_scan_to_s3-1.0-SNAPSHOT.jar /code
 
 
