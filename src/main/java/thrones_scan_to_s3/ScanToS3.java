@@ -177,7 +177,7 @@ public class ScanToS3 {
 			ByteArrayInputStream uploadObjectIS = new ByteArrayInputStream(uploadObject.getBytes());
 
 			ObjectMetadata metadata= new ObjectMetadata();
-			metadata.addUserMetadata("Content-Type",contentType);
+			metadata.addUserMetadata("content-type",contentType);
 
 			PutObjectRequest request= new PutObjectRequest(bucketName, keyName, uploadObjectIS,metadata);
 			request.setCannedAcl(CannedAccessControlList.PublicRead);
