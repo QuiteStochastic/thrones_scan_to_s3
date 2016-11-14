@@ -2,18 +2,16 @@ package thrones_scan_to_s3;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Scanner;
 
 /**
  * Created by oliverl1
@@ -27,35 +25,45 @@ public class ScanToS3 {
     private static final int numEvents=10;
     private static final int numEpisodes=40;
 
-    private static final String siteDomain ="https://www.google.com";
+    private static final String siteDomain ="http://valar-morghulis.org/";
 
 
-    private static final String bucketName     = "valar-morghulis.org";
+    private static final String bucketName = "valar-morghulis.org";
 
-    private static AmazonS3 s3client;
+    //private static AmazonS3 s3client;
 
 
     //test main
     public static void main(String[] args) {
 
-        RestTemplate restTemplate = new RestTemplate();
-
-
-
-        String test=restTemplate.getForObject(siteDomain,String.class);
-
+        String test=simpleGet(siteDomain);
         //System.out.println(test);
 
 
-        if (initS3Client()) return;
-
-        if(!s3client.doesBucketExist(bucketName)){
-            s3client.createBucket(bucketName);
+        final AmazonS3 s3client;
+        try {
+            s3client = initS3Client();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("failed to create s3 client");
+            return;
         }
 
+        System.out.println("S3 CLIENT CREATED");
+
+        if(!s3client.doesBucketExist(bucketName)){
+            System.out.println("NO BUCKET, CREATING");
+            s3client.createBucket(bucketName);
+        }
+        else{
+            System.out.println("BUCKET ALREADY EXISTS");
+        }
+
+        System.out.println("OK BUCKET");
 
 
-        uploadToS3("test",test);
+
+        uploadToS3(s3client,"test",test);
 
 
 
@@ -64,43 +72,40 @@ public class ScanToS3 {
 
     public static void realmain(String[] args) {
 
-        if (initS3Client()) return;
+        final AmazonS3 s3client;
+        try {
+            s3client = initS3Client();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("failed to create s3 client");
+            return;
+        }
 
         if(!s3client.doesBucketExist(bucketName)){
             s3client.createBucket(bucketName);
         }
 
 
-        RestTemplate restTemplate = new RestTemplate();
+        uploadToS3(s3client,"main",simpleGet(siteDomain));
+
+        uploadToS3(s3client,"characters",simpleGet(siteDomain+"/characters"));
+        uploadToS3(s3client,"organizations",simpleGet(siteDomain +"/organizations"));
+        uploadToS3(s3client,"locations",simpleGet(siteDomain +"/locations"));
+        uploadToS3(s3client,"events",simpleGet(siteDomain +"/events"));
+        uploadToS3(s3client,"episodes",simpleGet(siteDomain +"/episodes"));
+        uploadToS3(s3client,"about",simpleGet(siteDomain +"/about"));
 
 
-        uploadToS3("main",restTemplate.getForObject(siteDomain,String.class));
-
-        uploadToS3("characters",restTemplate.getForObject(siteDomain +"/characters",String.class));
-        uploadToS3("organizations",restTemplate.getForObject(siteDomain +"/organizations",String.class));
-        uploadToS3("locations",restTemplate.getForObject(siteDomain +"/locations",String.class));
-        uploadToS3("events",restTemplate.getForObject(siteDomain +"/events",String.class));
-        uploadToS3("episodes",restTemplate.getForObject(siteDomain +"/episodes",String.class));
-        uploadToS3("about",restTemplate.getForObject(siteDomain +"/about",String.class));
-
-
-        new Thread(() -> fetchPageAndUpload("characters",numCharacters)).start();
-        new Thread(() -> fetchPageAndUpload("organizations",numOrganizations)).start();
-        new Thread(() -> fetchPageAndUpload("locations",numLocations)).start();
-        new Thread(() -> fetchPageAndUpload("events",numEvents)).start();
-        new Thread(() -> fetchPageAndUpload("episodes",numEpisodes)).start();
-
-
-
-
-
-
-
-
-
+        new Thread(() -> fetchPageAndUpload(s3client,"characters",numCharacters)).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"organizations",numOrganizations)).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"locations",numLocations)).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"events",numEvents)).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"episodes",numEpisodes)).start();
     }
 
-    private static boolean initS3Client() {
+
+
+    private static AmazonS3 initS3Client() throws Exception{
         String accessKeyId;
         String secretKeyId;
 
@@ -121,45 +126,51 @@ public class ScanToS3 {
             secretKeyId=line[2];
 
 
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            return true;
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-            return true;
+            System.out.println("failed to read cred strings");
+            //return null;
+            throw new Exception();
         }
 
 
         BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKeyId, secretKeyId);
-        s3client = AmazonS3ClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(awsCreds))
-                .build();
-        return false;
+        AmazonS3 s3client= new AmazonS3Client(awsCreds);
+        s3client.setRegion(com.amazonaws.regions.Region.getRegion(Regions.US_EAST_1));
+        return s3client;
+
     }
 
 
 
 
-    private static void fetchPageAndUpload(String path,int numPages) {
+    private static void fetchPageAndUpload(AmazonS3 s3client, String category,int numPages) {
 
-        RestTemplate restTemplate = new RestTemplate();
 
         for(int n=1;n<=numPages;n++){
 
-            final String keyName=path+"/"+ n;
+            final String keyName=category+"/"+ n;
 
-            new Thread(()->uploadToS3(keyName,restTemplate.getForObject(siteDomain +"/"+keyName,String.class))).start();
+            new Thread(()->uploadToS3(s3client,keyName,simpleGet(siteDomain+"/"+keyName))).start();
 
         }
 
     }
 
 
+    private static String simpleGet(String url){
+
+        RestTemplate restTemplate = new RestTemplate();
+
+
+        return restTemplate.getForObject(url,String.class);
+    }
 
 
 
-    private static void uploadToS3(String keyName,String uploadObject){
+
+
+    private static void uploadToS3(AmazonS3 s3client,String keyName,String uploadObject){
 
 
         try {
