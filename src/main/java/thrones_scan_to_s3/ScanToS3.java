@@ -65,7 +65,7 @@ public class ScanToS3 {
 
 
 
-        uploadToS3(s3client,"test",test);
+        uploadToS3(s3client,"testFolder/test",test,"text/html");
 
 
 
@@ -88,21 +88,14 @@ public class ScanToS3 {
         }
 
 
-        uploadToS3(s3client,"main",simpleGet(siteDomain));
-
-        uploadToS3(s3client,"characters",simpleGet(siteDomain+"/characters"));
-        uploadToS3(s3client,"organizations",simpleGet(siteDomain +"/organizations"));
-        uploadToS3(s3client,"locations",simpleGet(siteDomain +"/locations"));
-        uploadToS3(s3client,"events",simpleGet(siteDomain +"/events"));
-        uploadToS3(s3client,"episodes",simpleGet(siteDomain +"/episodes"));
-        uploadToS3(s3client,"about",simpleGet(siteDomain +"/about"));
+        uploadToS3(s3client,"main",simpleGet(siteDomain),"text/html");
 
 
-        new Thread(() -> fetchPageAndUpload(s3client,"characters",numCharacters)).start();
-        new Thread(() -> fetchPageAndUpload(s3client,"organizations",numOrganizations)).start();
-        new Thread(() -> fetchPageAndUpload(s3client,"locations",numLocations)).start();
-        new Thread(() -> fetchPageAndUpload(s3client,"events",numEvents)).start();
-        new Thread(() -> fetchPageAndUpload(s3client,"episodes",numEpisodes)).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"characters",numCharacters,"text/html")).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"organizations",numOrganizations,"text/html")).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"locations",numLocations,"text/html")).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"events",numEvents,"text/html")).start();
+        new Thread(() -> fetchPageAndUpload(s3client,"episodes",numEpisodes,"text/html")).start();
     }
 
 
@@ -146,14 +139,16 @@ public class ScanToS3 {
 
 
 
-    private static void fetchPageAndUpload(AmazonS3 s3client, String category,int numPages) {
+    private static void fetchPageAndUpload(AmazonS3 s3client, String category,int numPages,String contentType) {
+
+		uploadToS3(s3client,category,simpleGet(siteDomain+"/"+category),contentType);
 
 
-        for(int n=1;n<=numPages;n++){
+		for(int n=1;n<=numPages;n++){
 
             final String keyName=category+"/"+ n;
 
-            new Thread(()->uploadToS3(s3client,keyName,simpleGet(siteDomain+"/"+keyName))).start();
+            new Thread(()->uploadToS3(s3client,keyName,simpleGet(siteDomain+"/"+keyName),contentType)).start();
 
         }
 
@@ -172,7 +167,7 @@ public class ScanToS3 {
 
 
 
-    private static void uploadToS3(AmazonS3 s3client,String keyName,String uploadObject){
+    private static void uploadToS3(AmazonS3 s3client,String keyName,String uploadObject,String contentType){
 
 
         try {
@@ -180,7 +175,10 @@ public class ScanToS3 {
 
 			ByteArrayInputStream uploadObjectIS = new ByteArrayInputStream(uploadObject.getBytes());
 
-            s3client.putObject(new PutObjectRequest(bucketName, keyName, uploadObjectIS, new ObjectMetadata()));
+			ObjectMetadata metadata= new ObjectMetadata();
+			metadata.addUserMetadata("Content-Type",contentType);
+
+            s3client.putObject(new PutObjectRequest(bucketName, keyName, uploadObjectIS,metadata ));
 
         }
         catch (AmazonServiceException ase) {
