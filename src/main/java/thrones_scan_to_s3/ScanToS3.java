@@ -6,10 +6,12 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -176,9 +178,12 @@ public class ScanToS3 {
         try {
             System.out.println("Uploading a new object to S3 from a file\n");
 
-            s3client.putObject(new PutObjectRequest(bucketName, keyName, uploadObject));
+			ByteArrayInputStream uploadObjectIS = new ByteArrayInputStream(uploadObject.getBytes());
 
-        } catch (AmazonServiceException ase) {
+            s3client.putObject(new PutObjectRequest(bucketName, keyName, uploadObjectIS, new ObjectMetadata()));
+
+        }
+        catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which " +
                     "means your request made it " +
                     "to Amazon S3, but was rejected with an error response" +
@@ -188,7 +193,8 @@ public class ScanToS3 {
             System.out.println("AWS Error Code:   " + ase.getErrorCode());
             System.out.println("Error Type:       " + ase.getErrorType());
             System.out.println("Request ID:       " + ase.getRequestId());
-        } catch (AmazonClientException ace) {
+        }
+        catch (AmazonClientException ace) {
             System.out.println("Caught an AmazonClientException, which " +
                     "means the client encountered " +
                     "an internal error while trying to " +
