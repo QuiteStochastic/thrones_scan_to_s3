@@ -181,7 +181,6 @@ public class ScanToS3 {
 
 			PutObjectRequest request= new PutObjectRequest(bucketName, keyName, uploadObjectIS,metadata);
 			request.setCannedAcl(CannedAccessControlList.PublicRead);
-
             s3client.putObject(request);
 
         }
