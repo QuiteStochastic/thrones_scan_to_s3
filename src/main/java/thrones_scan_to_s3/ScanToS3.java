@@ -6,6 +6,7 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.web.client.RestTemplate;
@@ -65,7 +66,7 @@ public class ScanToS3 {
 
 
 
-        uploadToS3(s3client,"testFolder/test",test,"text/html");
+        uploadToS3(s3client,"testFolder/test.html",test,"text/html");
 
 
 
@@ -178,7 +179,10 @@ public class ScanToS3 {
 			ObjectMetadata metadata= new ObjectMetadata();
 			metadata.addUserMetadata("Content-Type",contentType);
 
-            s3client.putObject(new PutObjectRequest(bucketName, keyName, uploadObjectIS,metadata ));
+			PutObjectRequest request= new PutObjectRequest(bucketName, keyName, uploadObjectIS,metadata);
+			request.setCannedAcl(CannedAccessControlList.PublicRead);
+
+            s3client.putObject(request);
 
         }
         catch (AmazonServiceException ase) {
