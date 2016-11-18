@@ -10,6 +10,7 @@ import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.transfer.TransferManager;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
@@ -68,6 +69,10 @@ public class ScanToS3 {
 
 
 
+		TransferManager tm = new TransferManager(s3client);
+
+		tm.uploadDirectory(bucketName, "", new File("../thrones_db_spring/src/main/resources/static/"), true);
+
     }
 
 
@@ -95,6 +100,12 @@ public class ScanToS3 {
         new Thread(() -> fetchPageAndUpload(s3client,"locations",numLocations,"text/html")).start();
         new Thread(() -> fetchPageAndUpload(s3client,"events",numEvents,"text/html")).start();
         new Thread(() -> fetchPageAndUpload(s3client,"episodes",numEpisodes,"text/html")).start();
+
+
+
+		TransferManager tm = new TransferManager(s3client);
+
+		tm.uploadDirectory(bucketName, "", new File("../thrones_db_spring/src/main/resources/static/"), true);
     }
 
 
@@ -206,13 +217,15 @@ public class ScanToS3 {
 
 	private static void uploadStringToS3(AmazonS3 s3client, String keyName, String uploadObject, String contentType){
 
+		System.out.println("Uploading to S3\n");
 
-        try {
-            System.out.println("Uploading a new object to S3 from a file\n");
+
+		try {
 
 			//if it exists, need to delete the old one
 			if(s3client.doesObjectExist(bucketName,keyName)){
 				s3client.deleteObject(new DeleteObjectRequest(bucketName,keyName));
+				System.out.println("old file existed, now deleted\n");
 			}
 
 
@@ -250,7 +263,12 @@ public class ScanToS3 {
                     "such as not being able to access the network.");
             System.out.println("Error Message: " + ace.getMessage());
         }
-    }
+
+		System.out.println("new object uploaded to S3\n");
+
+	}
+
+
 
 
 }
