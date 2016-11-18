@@ -7,6 +7,7 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.web.client.RestTemplate;
@@ -166,8 +167,19 @@ public class ScanToS3 {
 
 		try {
 			System.out.println("Uploading a new object to S3 from a file\n");
+
+			//if it exists, need to delete the old one
+			if(s3client.doesObjectExist(bucketName,keyName)){
+				s3client.deleteObject(new DeleteObjectRequest(bucketName,keyName));
+			}
+
+			//upload new one
 			File file = new File(uploadFile);
-			s3client.putObject(new PutObjectRequest(bucketName, keyName, file));
+
+			PutObjectRequest request= new PutObjectRequest(bucketName, keyName, file);
+			request.setCannedAcl(CannedAccessControlList.PublicRead);
+
+			s3client.putObject(request);
 
 		} catch (AmazonServiceException ase) {
 			System.out.println("Caught an AmazonServiceException, which " +
@@ -198,14 +210,25 @@ public class ScanToS3 {
         try {
             System.out.println("Uploading a new object to S3 from a file\n");
 
-			ByteArrayInputStream uploadObjectIS = new ByteArrayInputStream(uploadObject.getBytes());
+			//if it exists, need to delete the old one
+			if(s3client.doesObjectExist(bucketName,keyName)){
+				s3client.deleteObject(new DeleteObjectRequest(bucketName,keyName));
+			}
+
+
+			//upload new object
+
+			ByteArrayInputStream object = new ByteArrayInputStream(uploadObject.getBytes());
 
 			ObjectMetadata metadata= new ObjectMetadata();
 			metadata.setContentType(contentType);
 
-			PutObjectRequest request= new PutObjectRequest(bucketName, keyName, uploadObjectIS,metadata);
+			PutObjectRequest request= new PutObjectRequest(bucketName, keyName, object,metadata);
 			request.setCannedAcl(CannedAccessControlList.PublicRead);
-            s3client.putObject(request);
+
+			s3client.putObject(request);
+
+
 
         }
         catch (AmazonServiceException ase) {
