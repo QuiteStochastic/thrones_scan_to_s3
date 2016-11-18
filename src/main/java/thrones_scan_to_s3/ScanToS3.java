@@ -11,10 +11,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 
 /**
  * Created by oliverl1
@@ -66,7 +63,7 @@ public class ScanToS3 {
 
 
 
-        uploadToS3(s3client,"testFolder/test.html",test,"text/html");
+        uploadStringToS3(s3client,"testFolder/test.html",test,"text/html");
 
 
 
@@ -89,7 +86,7 @@ public class ScanToS3 {
         }
 
 
-        uploadToS3(s3client,"main",simpleGet(siteDomain),"text/html");
+        uploadStringToS3(s3client,"main",simpleGet(siteDomain),"text/html");
 
 
         new Thread(() -> fetchPageAndUpload(s3client,"characters",numCharacters,"text/html")).start();
@@ -142,14 +139,14 @@ public class ScanToS3 {
 
     private static void fetchPageAndUpload(AmazonS3 s3client, String category,int numPages,String contentType) {
 
-		uploadToS3(s3client,category,simpleGet(siteDomain+"/"+category),contentType);
+		uploadStringToS3(s3client,category,simpleGet(siteDomain+"/"+category),contentType);
 
 
 		for(int n=1;n<=numPages;n++){
 
             final String keyName=category+"/"+ n;
 
-            new Thread(()->uploadToS3(s3client,keyName,simpleGet(siteDomain+"/"+keyName),contentType)).start();
+            new Thread(()-> uploadStringToS3(s3client,keyName,simpleGet(siteDomain+"/"+keyName),contentType)).start();
 
         }
 
@@ -165,10 +162,37 @@ public class ScanToS3 {
     }
 
 
+	private static void uploadFileToS3(AmazonS3 s3client, String keyName, String uploadFile) {
+
+		try {
+			System.out.println("Uploading a new object to S3 from a file\n");
+			File file = new File(uploadFile);
+			s3client.putObject(new PutObjectRequest(bucketName, keyName, file));
+
+		} catch (AmazonServiceException ase) {
+			System.out.println("Caught an AmazonServiceException, which " +
+					"means your request made it " +
+					"to Amazon S3, but was rejected with an error response" +
+					" for some reason.");
+			System.out.println("Error Message:    " + ase.getMessage());
+			System.out.println("HTTP Status Code: " + ase.getStatusCode());
+			System.out.println("AWS Error Code:   " + ase.getErrorCode());
+			System.out.println("Error Type:       " + ase.getErrorType());
+			System.out.println("Request ID:       " + ase.getRequestId());
+		} catch (AmazonClientException ace) {
+			System.out.println("Caught an AmazonClientException, which " +
+					"means the client encountered " +
+					"an internal error while trying to " +
+					"communicate with S3, " +
+					"such as not being able to access the network.");
+			System.out.println("Error Message: " + ace.getMessage());
+		}
+
+	}
 
 
 
-    private static void uploadToS3(AmazonS3 s3client,String keyName,String uploadObject,String contentType){
+	private static void uploadStringToS3(AmazonS3 s3client, String keyName, String uploadObject, String contentType){
 
 
         try {
